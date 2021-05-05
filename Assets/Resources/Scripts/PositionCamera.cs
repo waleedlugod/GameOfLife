@@ -4,11 +4,17 @@ using UnityEngine;
 
 public class PositionCamera : MonoBehaviour
 {
+    public PetriDish petriDish;
+
+    private Camera cam;
+
     void Start()
     {
-        float offset = Cell.size / 2;
+        cam = GetComponent<Camera>();
 
-        transform.position = Camera.main.ViewportToWorldPoint(new Vector3(1, 1, transform.position.z));
+        float offset = petriDish.cellSize / 2;
+
+        transform.position = cam.ViewportToWorldPoint(new Vector3(1, 1, 0));
         transform.position = new Vector3(transform.position.x - offset, transform.position.y - offset, transform.position.z) ;
     }
 }

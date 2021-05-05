@@ -4,28 +4,50 @@ using UnityEngine;
 
 public class Cell : MonoBehaviour
 {
-    public static float size = 40;
+    public PetriDish petriDish;
 
-    private bool alive = false;
+    public Vector2 index;
 
-    private SpriteRenderer sprite; 
+    private bool isAlive;
+
+    private static float size;
+
+    private SpriteRenderer sprite;
+
+    public Cell(Vector2 index)
+    {
+        this.index = index;
+    }
 
     void Start()
     {
         sprite = GetComponent<SpriteRenderer>();
+        petriDish = transform.parent.GetComponent<PetriDish>();
 
+        size = petriDish.cellSize;
+        index = new Vector2(transform.position.x / size, transform.position.y / size);
         transform.localScale = new Vector2(size, size);
+
+        isAlive = false;
         sprite.color = Color.black;
     }
 
     void OnMouseDown()
     {
-        ChangeState();
+        SetState(!isAlive);
+        if (isAlive)
+        {
+            petriDish.aliveCells.Add(this);
+        }
+        else
+        {
+            petriDish.aliveCells.Remove(this);
+        }
     }
 
-    void ChangeState()
+    public void SetState(bool state)
     {
-        alive = !alive;
-        sprite.color = alive ? Color.white : Color.black;
+        isAlive = state;
+        sprite.color = isAlive ? Color.white : Color.black;
     }
 }
