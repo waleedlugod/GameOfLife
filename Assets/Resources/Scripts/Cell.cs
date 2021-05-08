@@ -6,7 +6,7 @@ public class Cell : MonoBehaviour
 {
     public PetriDish petriDish;
 
-    public int index;
+    public Vector2 index;
 
     public bool isAlive;
 
@@ -33,11 +33,11 @@ public class Cell : MonoBehaviour
         SetState(!isAlive);
         if (isAlive)
         {
-            petriDish.population.Add(this);
+            petriDish.population.Add(index, this);
         }
         else
         {
-            petriDish.population.Remove(this);
+            petriDish.population.Remove(index);
         }
     }
 

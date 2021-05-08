@@ -18,8 +18,10 @@ public class PetriDish : MonoBehaviour
 
     public int totalCellCount;
 
-    public List<Cell> population = new List<Cell>();
+    public Dictionary<Vector2, Cell> population = new Dictionary<Vector2, Cell>();
 
+    private Dictionary<Vector2, Cell> cellByIndex = new Dictionary<Vector2, Cell>()
+;
     private double nextActionTime = 0;
 
     // Start is called before the first frame update
@@ -65,15 +67,15 @@ public class PetriDish : MonoBehaviour
 
     void GenerateCells()
     {
-        int index = 0;
         for (int row = 0; row < height; row++)
         {
             for (int column = 0; column < width; column++)
             {
                 Cell cell = Instantiate(cellPrefab, transform, false);
                 cell.transform.localPosition = new Vector2(column, row) * cellSize;
-                cell.index = index;
-                index++;
+                cell.index = new Vector2(column, row);
+
+                cellByIndex.Add(cell.index, cell);
             }
         }
     }
@@ -82,7 +84,7 @@ public class PetriDish : MonoBehaviour
     {
         if (!isPaused)
         {
-            population = new List<Cell>(GetNextPopulation(population));
+            population = new Dictionary<Vector2, Cell>(GetNextPopulation(population));
             generation++;
         }
     }
@@ -92,12 +94,12 @@ public class PetriDish : MonoBehaviour
         yield return new WaitForSeconds(seconds);
     }
 
-    List<Cell> GetNextPopulation(List<Cell> currPopulation)
+    Dictionary<Vector2, Cell> GetNextPopulation(Dictionary<Vector2, Cell> currPopulation)
     {
-        List<Cell> nextPopulation = new List<Cell>();
-        List<Cell> evaluatedCells = new List<Cell>();
+        Dictionary<Vector2, Cell> nextPopulation = new Dictionary<Vector2, Cell>();
+        Dictionary<Vector2, Cell> evaluatedCells = new Dictionary<Vector2, Cell>();
 
-        foreach (Cell cell in currPopulation)
+        foreach (Cell cell in currPopulation.Values)
         {
             GetNextPopulation(cell, currPopulation, nextPopulation, evaluatedCells, 0);
         }
@@ -105,7 +107,7 @@ public class PetriDish : MonoBehaviour
         return nextPopulation;
     }
 
-    void GetNextPopulation(Cell cell, List<Cell> currPopulation, List<Cell> nextPopulation, List<Cell> evaluatedCells, int currDepth)
+    void GetNextPopulation(Cell cell, Dictionary<Vector2, Cell> currPopulation, Dictionary<Vector2, Cell> nextPopulation, Dictionary<Vector2, Cell> evaluatedCells, int currDepth)
     {
         List<Cell> neighbors = new List<Cell>(GetNeighbors(cell));
 
@@ -119,20 +121,20 @@ public class PetriDish : MonoBehaviour
             }
         }
 
-        if (!evaluatedCells.Contains(cell))
+        if (!evaluatedCells.ContainsKey(cell.index))
         {
             // Count alive neighbors
             int aliveNeighborsCount = 0;
             foreach(Cell neighbor in neighbors)
             {
-                if (currPopulation.Contains(neighbor))
+                if (currPopulation.ContainsKey(neighbor.index))
                 {
                     aliveNeighborsCount++;
                 }
             }
 
             // If Cell is alive in previous generation.
-            if (currPopulation.Contains(cell) &&
+            if (currPopulation.ContainsKey(cell.index) &&
                 // If underpopulated or overpopulated.
                (aliveNeighborsCount < 2 || aliveNeighborsCount > 3))
             {
@@ -144,20 +146,20 @@ public class PetriDish : MonoBehaviour
             // If cell will be born.
             else if (aliveNeighborsCount == 3 ||
                     // If living cell in previous population will survive.
-                    (aliveNeighborsCount == 2 && currPopulation.Contains(cell)))
+                    (aliveNeighborsCount == 2 && currPopulation.ContainsKey(cell.index)))
             {
                 // Cell is alive.
                 cell.SetState(true);
-                nextPopulation.Add(cell);
+                nextPopulation.Add(cell.index, cell);
 
                 if (aliveNeighborsCount == 3)
                 {
                     Debug.Log($"Generation {generation} cell of {cell.index} was born");
                 }
             }
-        }
 
-        evaluatedCells.Add(cell);
+            evaluatedCells.Add(cell.index, cell);
+        }
     }
 
     List<Cell> GetNeighbors(Cell cell)
@@ -171,14 +173,9 @@ public class PetriDish : MonoBehaviour
             {
                 if (!(yOffset == 0 && xOffset == 0))
                 {
-                    try
+                    if (cellByIndex.TryGetValue(new Vector2(cell.index.x + xOffset, cell.index.y + yOffset), out Cell neighbor))
                     {
-                        Cell neighbor = transform.GetChild((cell.index + width * yOffset) + xOffset).GetComponent<Cell>();
                         neighbors.Add(neighbor);
-                    }
-                    catch
-                    {
-                        // neighbor is out of bounds.
                     }
                 }
             }
