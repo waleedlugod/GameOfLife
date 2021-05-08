@@ -29,10 +29,12 @@ public class Cell : MonoBehaviour
         if (isAlive)
         {
             petriDish.population.Add(index, this);
+            Debug.Log($"Cell of {index} was added.");
         }
         else
         {
             petriDish.population.Remove(index);
+            Debug.Log($"Cell of {index} was removed.");
         }
     }
 

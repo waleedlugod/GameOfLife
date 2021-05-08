@@ -109,7 +109,27 @@ public class PetriDish : MonoBehaviour
 
     void GetNextPopulation(Cell cell, Dictionary<Vector2, Cell> currPopulation, Dictionary<Vector2, Cell> nextPopulation, Dictionary<Vector2, Cell> evaluatedCells, int currDepth)
     {
-        List<Cell> neighbors = new List<Cell>(GetNeighbors(cell));
+        List<Cell> neighbors = new List<Cell>();
+        int aliveNeighborsCount = 0;
+        for (int yOffset = -1; yOffset < 2; yOffset++)
+        {
+            for (int xOffset = -1; xOffset < 2; xOffset++)
+            {
+                if (!(yOffset == 0 && xOffset == 0))
+                {
+                    // Gets cell from map.
+                    if (cellByIndex.TryGetValue(new Vector2(cell.index.x + xOffset, cell.index.y + yOffset), out Cell neighbor))
+                    {
+                        neighbors.Add(neighbor);
+                        // If alive.
+                        if (currPopulation.ContainsKey(neighbor.index))
+                        {
+                            aliveNeighborsCount++;
+                        }
+                    }
+                }
+            }
+        }
 
         // Evaluate states of neighbors
         int depth = 1;
@@ -123,16 +143,6 @@ public class PetriDish : MonoBehaviour
 
         if (!evaluatedCells.ContainsKey(cell.index))
         {
-            // Count alive neighbors
-            int aliveNeighborsCount = 0;
-            foreach(Cell neighbor in neighbors)
-            {
-                if (currPopulation.ContainsKey(neighbor.index))
-                {
-                    aliveNeighborsCount++;
-                }
-            }
-
             // If Cell is alive in previous generation.
             if (currPopulation.ContainsKey(cell.index) &&
                 // If underpopulated or overpopulated.
@@ -141,7 +151,7 @@ public class PetriDish : MonoBehaviour
                 // Cell is dead.
                 cell.SetState(false);
 
-                Debug.Log($"Generation {generation} cell of {cell.index} has died, population: {aliveNeighborsCount}");
+                Debug.Log($"Generation {generation} cell of {cell.index} has died, population: {aliveNeighborsCount}.");
             }
             // If cell will be born.
             else if (aliveNeighborsCount == 3 ||
@@ -154,33 +164,11 @@ public class PetriDish : MonoBehaviour
 
                 if (aliveNeighborsCount == 3)
                 {
-                    Debug.Log($"Generation {generation} cell of {cell.index} was born");
+                    Debug.Log($"Generation {generation} cell of {cell.index} was born.");
                 }
             }
 
             evaluatedCells.Add(cell.index, cell);
         }
-    }
-
-    List<Cell> GetNeighbors(Cell cell)
-    {
-        List<Cell> neighbors = new List<Cell>();
-
-        // NOTE: Decided no not use Dictionary to increase performance
-        for (int yOffset = -1; yOffset < 2; yOffset++)
-        {
-            for (int xOffset = -1; xOffset < 2; xOffset++)
-            {
-                if (!(yOffset == 0 && xOffset == 0))
-                {
-                    if (cellByIndex.TryGetValue(new Vector2(cell.index.x + xOffset, cell.index.y + yOffset), out Cell neighbor))
-                    {
-                        neighbors.Add(neighbor);
-                    }
-                }
-            }
-        }
-
-        return neighbors;
     }
 }
