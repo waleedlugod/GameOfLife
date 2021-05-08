@@ -8,24 +8,19 @@ public class Cell : MonoBehaviour
 
     public Vector2 index;
 
-    public bool isAlive;
+    public bool isAlive = false;
 
     public float size;
 
-    private SpriteRenderer sprite;
-
     void Start()
     {
-        sprite = GetComponent<SpriteRenderer>();
+        GetComponent<Renderer>().enabled = false;
 
         petriDish = transform.parent.GetComponent<PetriDish>();
 
         size = petriDish.cellSize;
 
         transform.localScale = new Vector2(1, 1) * size;
-
-        isAlive = false;
-        sprite.color = Color.black;
     }
 
     void OnMouseDown()
@@ -44,6 +39,13 @@ public class Cell : MonoBehaviour
     public void SetState(bool state)
     {
         isAlive = state;
-        sprite.color = isAlive ? Color.white : Color.black;
+        if (isAlive)
+        {
+            GetComponent<Renderer>().enabled = true;
+        }
+        else
+        {
+            GetComponent<Renderer>().enabled = false;
+        }
     }
 }
