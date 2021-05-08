@@ -6,27 +6,23 @@ public class Cell : MonoBehaviour
 {
     public PetriDish petriDish;
 
-    public Vector2 index;
+    public int index;
 
-    private bool isAlive;
+    public bool isAlive;
 
-    private static float size;
+    public float size;
 
     private SpriteRenderer sprite;
-
-    public Cell(Vector2 index)
-    {
-        this.index = index;
-    }
 
     void Start()
     {
         sprite = GetComponent<SpriteRenderer>();
+
         petriDish = transform.parent.GetComponent<PetriDish>();
 
         size = petriDish.cellSize;
-        index = new Vector2(transform.position.x / size, transform.position.y / size);
-        transform.localScale = new Vector2(size, size);
+
+        transform.localScale = new Vector2(1, 1) * size;
 
         isAlive = false;
         sprite.color = Color.black;
@@ -37,11 +33,11 @@ public class Cell : MonoBehaviour
         SetState(!isAlive);
         if (isAlive)
         {
-            petriDish.aliveCells.Add(this);
+            petriDish.population.Add(this);
         }
         else
         {
-            petriDish.aliveCells.Remove(this);
+            petriDish.population.Remove(this);
         }
     }
 

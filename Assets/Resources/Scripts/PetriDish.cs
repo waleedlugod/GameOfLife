@@ -1,3 +1,4 @@
+using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
@@ -5,92 +6,147 @@ public class PetriDish : MonoBehaviour
 {
     public Cell cellPrefab;
 
+    public bool isPaused;
+
     public int generation = 0;
 
-    public float secTillNextUpdate = 2;
+    public float secsTillNextGeneration;
 
-    public int cellSize;
-    public int width;
-    public int height;
+    public int cellSize = 0;
 
-    public List<Cell> aliveCells = new List<Cell>();
+    public int width, height;
 
-    public Dictionary<Vector2, Cell> cellByIndex = new Dictionary<Vector2, Cell>();
+    public int totalCellCount;
+
+    public List<Cell> population = new List<Cell>();
 
     // Start is called before the first frame update
     void Start()
     {
+        isPaused = true;
+
+        DetermineHeightAndWidth();
+
+        PositionPetriDish();
+
+        GenerateCells();
+
+        InvokeRepeating("UpdateCells", 0, secsTillNextGeneration);
+    }
+
+    void Update()
+    {
+        if (Input.GetKeyDown(KeyCode.Space))
+        {
+            isPaused = !isPaused;
+            Debug.Log($"isPaused changed to {isPaused}");
+        }
+    }
+
+    void DetermineHeightAndWidth()
+    {
+        height = Mathf.CeilToInt((Camera.main.orthographicSize * 2 / cellSize));
+        width = Mathf.CeilToInt((Camera.main.orthographicSize * Camera.main.aspect * 2 / cellSize));
+    }
+
+    void PositionPetriDish()
+    {
+        // Position to bottom left of camera
+        transform.position = Camera.main.ViewportToWorldPoint(new Vector3(0, 0, 0));
+        // Offset to completelyshow bottom left cell
+        transform.position = new Vector2(transform.position.x + (cellSize / 2), transform.position.y + (cellSize / 2));
+    }
+
+    void GenerateCells()
+    {
+        int index = 0;
         for (int row = 0; row < height; row++)
         {
             for (int column = 0; column < width; column++)
             {
-                Cell cell = Instantiate(cellPrefab, new Vector3(column * cellSize, row * cellSize, 1), Quaternion.identity, transform);
-
-                cellByIndex.Add(new Vector2(column, row), cell);
-
-                cell.transform.parent = transform;
+                Cell cell = Instantiate(cellPrefab, transform, false);
+                cell.transform.localPosition = new Vector2(column, row) * cellSize;
+                cell.index = index;
+                index++;
             }
         }
-
-        StartCoroutine(UpdateCells());
     }
 
-    IEnumerator<WaitForSeconds> UpdateCells()
+    void UpdateCells()
     {
-        while (true)
+        if (!isPaused)
         {
-            yield return new WaitForSeconds(secTillNextUpdate);
-            if (!InputController.isPaused)
-            {
-                aliveCells = new List<Cell>(GetUpdatedAliveCells());
-                generation++;
-            }
+            population = new List<Cell>(GetNextPopulation(population));
+            generation++;
         }
     }
 
-    List<Cell> GetUpdatedAliveCells()
+    IEnumerator Wait(float seconds)
     {
-        List<Cell> updatedAliveCells = new List<Cell>();
+        yield return new WaitForSeconds(seconds);
+    }
+
+    List<Cell> GetNextPopulation(List<Cell> currPopulation)
+    {
+        List<Cell> nextPopulation = new List<Cell>();
         List<Cell> evaluatedCells = new List<Cell>();
 
-        foreach (Cell cell in aliveCells)
+        foreach (Cell cell in currPopulation)
         {
-            EvaluateCellState(cell, evaluatedCells, updatedAliveCells);
+            GetNextPopulation(cell, currPopulation, nextPopulation, evaluatedCells, 0);
         }
 
-        return updatedAliveCells;
+        return nextPopulation;
     }
 
-    void EvaluateCellState(Cell cell, List<Cell> evaluatedCells, List<Cell> updatedAliveCells, int currDepth = 0)
+    void GetNextPopulation(Cell cell, List<Cell> currPopulation, List<Cell> nextPopulation, List<Cell> evaluatedCells, int currDepth)
     {
         List<Cell> neighbors = new List<Cell>(GetNeighbors(cell));
 
+        // Evaluate states of neighbors
         int depth = 1;
         if (currDepth < depth)
         {
             foreach(Cell neighbor in neighbors)
             {
-                EvaluateCellState(neighbor, evaluatedCells, updatedAliveCells, currDepth + 1);
+                GetNextPopulation(neighbor, currPopulation, nextPopulation, evaluatedCells, currDepth + 1);
             }
         }
 
         if (!evaluatedCells.Contains(cell))
         {
-            int aliveNeighborsCount = GetAliveNeighorsCount(neighbors);
-            if (aliveCells.Contains(cell) && (aliveNeighborsCount < 2 || aliveNeighborsCount > 3))
+            // Count alive neighbors
+            int aliveNeighborsCount = 0;
+            foreach(Cell neighbor in neighbors)
             {
+                if (currPopulation.Contains(neighbor))
+                {
+                    aliveNeighborsCount++;
+                }
+            }
+
+            // If Cell is alive in previous generation.
+            if (currPopulation.Contains(cell) &&
+                // If underpopulated or overpopulated.
+               (aliveNeighborsCount < 2 || aliveNeighborsCount > 3))
+            {
+                // Cell is dead.
                 cell.SetState(false);
 
-                print($"Generation {generation} cell of {cell.index} has died, population: {aliveNeighborsCount}");
+                Debug.Log($"Generation {generation} cell of {cell.index} has died, population: {aliveNeighborsCount}");
             }
-            else if (aliveNeighborsCount == 3 || (aliveNeighborsCount == 2 && aliveCells.Contains(cell)))
+            // If cell will be born.
+            else if (aliveNeighborsCount == 3 ||
+                    // If living cell in previous population will survive.
+                    (aliveNeighborsCount == 2 && currPopulation.Contains(cell)))
             {
+                // Cell is alive.
                 cell.SetState(true);
-                updatedAliveCells.Add(cell);
+                nextPopulation.Add(cell);
 
                 if (aliveNeighborsCount == 3)
                 {
-                    print($"Generation {generation} cell of {cell.index} was born");
+                    Debug.Log($"Generation {generation} cell of {cell.index} was born");
                 }
             }
         }
@@ -102,35 +158,26 @@ public class PetriDish : MonoBehaviour
     {
         List<Cell> neighbors = new List<Cell>();
 
+        // NOTE: Decided no not use Dictionary to increase performance
         for (int yOffset = -1; yOffset < 2; yOffset++)
         {
             for (int xOffset = -1; xOffset < 2; xOffset++)
             {
-                if (!(xOffset == 0 && yOffset == 0))
+                if (!(yOffset == 0 && xOffset == 0))
                 {
-                    if (cellByIndex.TryGetValue(new Vector2(cell.index.x + xOffset, cell.index.y + yOffset), out Cell neighbor))
+                    try
                     {
+                        Cell neighbor = transform.GetChild((cell.index + width * yOffset) + xOffset).GetComponent<Cell>();
                         neighbors.Add(neighbor);
+                    }
+                    catch
+                    {
+                        // neighbor is out of bounds.
                     }
                 }
             }
         }
 
         return neighbors;
-    }
-
-    int GetAliveNeighorsCount(List<Cell> neighbors)
-    {
-        int aliveNeighbors = 0;
-
-        foreach (Cell neighbor in neighbors)
-        {
-            if (aliveCells.Contains(neighbor))
-            {
-                aliveNeighbors++;
-            }
-        }
-
-        return aliveNeighbors;
     }
 }
