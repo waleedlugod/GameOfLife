@@ -20,6 +20,8 @@ public class PetriDish : MonoBehaviour
 
     public List<Cell> population = new List<Cell>();
 
+    private double nextActionTime = 0;
+
     // Start is called before the first frame update
     void Start()
     {
@@ -30,8 +32,6 @@ public class PetriDish : MonoBehaviour
         PositionPetriDish();
 
         GenerateCells();
-
-        InvokeRepeating("UpdateCells", 0, secsTillNextGeneration);
     }
 
     void Update()
@@ -40,6 +40,12 @@ public class PetriDish : MonoBehaviour
         {
             isPaused = !isPaused;
             Debug.Log($"isPaused changed to {isPaused}");
+        }
+
+        if (Time.time > nextActionTime && !isPaused)
+        {
+            nextActionTime = Time.time + secsTillNextGeneration;
+            UpdateCells();
         }
     }
 
