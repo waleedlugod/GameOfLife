@@ -1,4 +1,4 @@
 # Game-Of-Life
  Simulation of Conway's Game of Life.
 
- Download: waleedlugod.itch.io/gol
+ Download: https://waleedlugod.itch.io/gol
